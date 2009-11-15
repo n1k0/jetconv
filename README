@@ -1,0 +1,6 @@
+JetConv
+-------
+
+JetConv is a mozilla Jetpack allowing to convert an amount of money into another currency, using the Google Finance API.
+
+Once installed, just select some number on any page, right-click and convert it choosing both initial and target currencies using the "Convert currency from..." contextual menu.
