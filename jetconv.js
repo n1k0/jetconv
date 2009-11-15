@@ -8,23 +8,43 @@
  *
  * @author Nicolas Perriault <nperriault@gmail.com>
  */
+var manifest = { 
+  settings: [
+    {
+      id:      "enabledCurrencies",
+      name:    "enabledCurrencies",
+      type:    "text",
+      label:   "Enabled currencies (comma separated)",
+      default: "EUR,GBP,USD,JPY"
+    }
+  ]
+};
+
 jetpack.future.import("menu");
 jetpack.future.import("selection");
+jetpack.future.import("storage.settings");
 
 jetpack.menu.context.page.add(function(target)({
   label: "Convert currency from...",
   icon:  "http://www.google.com/finance/favicon.ico",  
-  menu:  new jetpack.Menu(buildMenu(currencies)),
+  menu:  new jetpack.Menu(buildMenu()),
   command: function(menuItem){
+    if ('configure' == menuItem.data) {
+      return target.document.location = 'about:jetpack';
+    }
     var selectedText = jQuery.trim(jetpack.selection.text);
-    if (!selectedText || '' == selectedText) {
+    if ('' == selectedText) {
       return jetpack.notifications.show('Empty selection');
     }
     if (false == /^[0-9,\.\s]*$/.test(selectedText)) {
       return jetpack.notifications.show('Selected text does not hold a valid number');
     }
-    var sourceCurrency = menuItem.data.substring(0, menuItem.data.lastIndexOf(':'));
-    var targetCurrency = menuItem.data.substring(menuItem.data.lastIndexOf(':') + 1);
+    var sourceCurrency = jQuery.trim(menuItem.data.substring(0, menuItem.data.lastIndexOf(':')));
+    var targetCurrency = jQuery.trim(menuItem.data.substring(menuItem.data.lastIndexOf(':') + 1));
+    if ('' == sourceCurrency || '' == targetCurrency)
+    {
+      return jetpack.notifications.show('Invalid currencies (' + sourceCurrency + '/' + targetCurrency + ')');
+    }
     $.get('http://www.google.com/finance/converter?a=' + selectedText + '&from=' + sourceCurrency + '&to=' + targetCurrency, function(result){
       var matches = result.match(/currency_converter_result>(.*) = <span class=bld>(.*)</i);
       jetpack.notifications.show(matches ? matches[1] + " = " + matches[2] : 'No result');
@@ -32,89 +52,94 @@ jetpack.menu.context.page.add(function(target)({
   }
 }));
 
-var buildMenu = function(currencies) {
+var buildMenu = function() {
+  var enabledCurrencies = (jetpack.storage.settings.enabledCurrencies || "EUR,GBP,USD,JPY").split(/\s?,\s?/);
+  var nb = enabledCurrencies.length;
   var menu = [];
-  var nb = currencies.length;
   for (var i = 0; i < nb; i++) {
     var subMenu = [];
     for (var j = 0; j < nb; j++) {
-      subMenu[j] = {
-        label: currencies[j].label,
-        data:  currencies[i].data + ':' + currencies[j].data
-      };
+      if (enabledCurrencies[j] != enabledCurrencies[i]) {
+        subMenu[j] = {
+          label: currencyCodes[enabledCurrencies[j]] + ' (' + enabledCurrencies[j] + ')',
+          data:  enabledCurrencies[i] + ':' + enabledCurrencies[j]
+        };
+      }
     }
     menu[i] = {
-      label: currencies[i].label + ' to...',
+      label: currencyCodes[enabledCurrencies[i]] + ' (' + enabledCurrencies[i] + ') to...',
       menu:  new jetpack.Menu(subMenu),
     };
   };
+  menu[i++] = { type: 'separator' };
+  menu[i++] = { label: "Configure", data: 'configure' }
   return menu;
 }
 
-var currencies = [
-  { label: "AED (United Arab Emirates Dirham)", data: "AED" },
-  { label: "ANG (Netherlands Antillean Gulden)", data: "ANG" },
-  { label: "ARS (Argentine Peso)", data: "ARS" },
-  { label: "AUD (Australian Dollar)", data: "AUD" },
-  { label: "BGN (Bulgarian Lev)", data: "BGN" },
-  { label: "BHD (Bahraini Dinar)", data: "BHD" },
-  { label: "BND (Brunei Dollar)", data: "BND" },
-  { label: "BOB (Bolivian Boliviano)", data: "BOB" },
-  { label: "BRL (Brazilian Real)", data: "BRL" },
-  { label: "BWP (Botswana Pula)", data: "BWP" },
-  { label: "CAD (Canadian Dollar)", data: "CAD" },
-  { label: "CHF (Swiss Franc)", data: "CHF" },
-  { label: "CLP (Chilean Peso)", data: "CLP" },
-  { label: "CNY (Chinese Yuan (renminbi))", data: "CNY" },
-  { label: "COP (Colombian Peso)", data: "COP" },
-  { label: "CZK (Czech Koruna)", data: "CZK" },
-  { label: "DKK (Danish Krone)", data: "DKK" },
-  { label: "EEK (Estonian Kroon)", data: "EEK" },
-  { label: "EGP (Egyptian Pound)", data: "EGP" },
-  { label: "EUR (Euro)", data: "EUR" },
-  { label: "FJD (Fijian Dollar)", data: "FJD" },
-  { label: "GBP (British Pound)", data: "GBP" },
-  { label: "HKD (Hong Kong Dollar)", data: "HKD" },
-  { label: "HNL (Honduran Lempira)", data: "HNL" },
-  { label: "HRK (Croatian Kuna)", data: "HRK" },
-  { label: "HUF (Hungarian Forint)", data: "HUF" },
-  { label: "IDR (Indonesian Rupiah)", data: "IDR" },
-  { label: "ILS (New Israeli Sheqel)", data: "ILS" },
-  { label: "INR (Indian Rupee)", data: "INR" },
-  { label: "ISK (Icelandic Króna)", data: "ISK" },
-  { label: "JPY (Japanese Yen)", data: "JPY" },
-  { label: "KRW (South Korean Won)", data: "KRW" },
-  { label: "KWD (Kuwaiti Dinar)", data: "KWD" },
-  { label: "KZT (Kazakhstani Tenge)", data: "KZT" },
-  { label: "LKR (Sri Lankan Rupee)", data: "LKR" },
-  { label: "LTL (Lithuanian Litas)", data: "LTL" },
-  { label: "MAD (Moroccan Dirham)", data: "MAD" },
-  { label: "MUR (Mauritian Rupee)", data: "MUR" },
-  { label: "MXN (Mexican Peso)", data: "MXN" },
-  { label: "MYR (Malaysian Ringgit)", data: "MYR" },
-  { label: "NOK (Norwegian Krone)", data: "NOK" },
-  { label: "NPR (Nepalese Rupee)", data: "NPR" },
-  { label: "NZD (New Zealand Dollar)", data: "NZD" },
-  { label: "OMR (Omani Rial)", data: "OMR" },
-  { label: "PEN (Peruvian Nuevo Sol)", data: "PEN" },
-  { label: "PHP (Philippine Peso)", data: "PHP" },
-  { label: "PKR (Pakistani Rupee)", data: "PKR" },
-  { label: "PLN (Polish Złoty)", data: "PLN" },
-  { label: "QAR (Qatari Riyal)", data: "QAR" },
-  { label: "RON (New Romanian Leu)", data: "RON" },
-  { label: "RSD (Serbian Dinar)", data: "RSD" },
-  { label: "RUB (Russian Ruble)", data: "RUB" },
-  { label: "SAR (Saudi Riyal)", data: "SAR" },
-  { label: "SEK (Swedish Krona)", data: "SEK" },
-  { label: "SGD (Singapore Dollar)", data: "SGD" },
-  { label: "SIT (Slovenian Tolar)", data: "SIT" },
-  { label: "SKK (Slovak Koruna)", data: "SKK" },
-  { label: "THB (Thai Baht)", data: "THB" },
-  { label: "TRY (New Turkish Lira)", data: "TRY" },
-  { label: "TTD (Trinidad and Tobago Dollar)", data: "TTD" },
-  { label: "TWD (New Taiwan Dollar)", data: "TWD" },
-  { label: "UAH (Ukrainian Hryvnia)", data: "UAH" },
-  { label: "USD (United States Dollar)", data: "USD" },
-  { label: "VEB (Venezuelan Bolívar)", data: "VEB" },
-  { label: "ZAR (South African Rand)", data: "ZAR" },
-];
+var currencyCodes = {
+  "AED": "United Arab Emirates Dirham",
+  "ANG": "Netherlands Antillean Gulden",
+  "ARS": "Argentine Peso",
+  "AUD": "Australian Dollar",
+  "BGN": "Bulgarian Lev",
+  "BHD": "Bahraini Dinar",
+  "BND": "Brunei Dollar",
+  "BOB": "Bolivian Boliviano",
+  "BRL": "Brazilian Real",
+  "BWP": "Botswana Pula",
+  "CAD": "Canadian Dollar",
+  "CHF": "Swiss Franc",
+  "CLP": "Chilean Peso",
+  "CNY": "Chinese Yuan",
+  "COP": "Colombian Peso",
+  "CZK": "Czech Koruna",
+  "DKK": "Danish Krone",
+  "EEK": "Estonian Kroon",
+  "EGP": "Egyptian Pound",
+  "EUR": "Euro",
+  "FJD": "Fijian Dollar",
+  "GBP": "British Pound",
+  "HKD": "Hong Kong Dollar",
+  "HNL": "Honduran Lempira",
+  "HRK": "Croatian Kuna",
+  "HUF": "Hungarian Forint",
+  "IDR": "Indonesian Rupiah",
+  "ILS": "New Israeli Sheqel",
+  "INR": "Indian Rupee",
+  "ISK": "Icelandic Króna",
+  "JPY": "Japanese Yen",
+  "KRW": "South Korean Won",
+  "KWD": "Kuwaiti Dinar",
+  "KZT": "Kazakhstani Tenge",
+  "LKR": "Sri Lankan Rupee",
+  "LTL": "Lithuanian Litas",
+  "MAD": "Moroccan Dirham",
+  "MUR": "Mauritian Rupee",
+  "MXN": "Mexican Peso",
+  "MYR": "Malaysian Ringgit",
+  "NOK": "Norwegian Krone",
+  "NPR": "Nepalese Rupee",
+  "NZD": "New Zealand Dollar",
+  "OMR": "Omani Rial",
+  "PEN": "Peruvian Nuevo Sol",
+  "PHP": "Philippine Peso",
+  "PKR": "Pakistani Rupee",
+  "PLN": "Polish Złoty",
+  "QAR": "Qatari Riyal",
+  "RON": "New Romanian Leu",
+  "RSD": "Serbian Dinar",
+  "RUB": "Russian Ruble",
+  "SAR": "Saudi Riyal",
+  "SEK": "Swedish Krona",
+  "SGD": "Singapore Dollar",
+  "SIT": "Slovenian Tolar",
+  "SKK": "Slovak Koruna",
+  "THB": "Thai Baht",
+  "TRY": "New Turkish Lira",
+  "TTD": "Trinidad and Tobago Dollar",
+  "TWD": "New Taiwan Dollar",
+  "UAH": "Ukrainian Hryvnia",
+  "USD": "United States Dollar",
+  "VEB": "Venezuelan Bolívar",
+  "ZAR": "South African Rand",
+};
