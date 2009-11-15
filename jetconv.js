@@ -25,9 +25,10 @@ jetpack.future.import("selection");
 jetpack.future.import("storage.settings");
 
 jetpack.menu.context.page.add(function(target)({
+  id:    "JetConvMenu",
   label: "Convert currency from...",
-  icon:  "http://www.google.com/finance/favicon.ico",  
-  menu:  new jetpack.Menu(buildMenu()),
+  icon:  "http://www.google.com/finance/favicon.ico",
+  menu:  new jetpack.Menu(buildMenuConfiguration()),
   command: function(menuItem){
     if ('configure' == menuItem.data) {
       return target.document.location = 'about:jetpack';
@@ -43,17 +44,32 @@ jetpack.menu.context.page.add(function(target)({
     var targetCurrency = jQuery.trim(menuItem.data.substring(menuItem.data.lastIndexOf(':') + 1));
     if ('' == sourceCurrency || '' == targetCurrency)
     {
-      return jetpack.notifications.show('Invalid currencies (' + sourceCurrency + '/' + targetCurrency + ')');
+      return jetpack.notifications.show({
+        title: 'JetConv error',
+        icon: "http://www.google.com/finance/favicon.ico",
+        body: 'Invalid currencies (' + sourceCurrency + '/' + targetCurrency + ')',
+      });
     }
     $.get('http://www.google.com/finance/converter?a=' + selectedText + '&from=' + sourceCurrency + '&to=' + targetCurrency, function(result){
       var matches = result.match(/currency_converter_result>(.*) = <span class=bld>(.*)</i);
-      jetpack.notifications.show(matches ? matches[1] + " = " + matches[2] : 'No result');
+      return jetpack.notifications.show({
+        title: 'JetConv Conversion Result',
+        icon: "http://code.google.com/intl/fr/apis/finance/images/gdata-finance.png",
+        body: matches ? matches[1] + " = " + matches[2] : 'No result',
+      });
     });
   }
 }));
 
-var buildMenu = function() {
-  var enabledCurrencies = (jetpack.storage.settings.enabledCurrencies || "EUR,GBP,USD,JPY").split(/\s?,\s?/);
+var buildMenuConfiguration = function(all) {
+  if (true == all) {
+    var enabledCurrencies = [];
+    for (var i in currencyCodes) {
+      enabledCurrencies[i] = enabledCurrencies.push(i);
+    }
+  } else {
+    var enabledCurrencies = (jetpack.storage.settings.enabledCurrencies || "EUR,GBP,USD,JPY").split(/\s?,\s?/);
+  }
   var nb = enabledCurrencies.length;
   var menu = [];
   for (var i = 0; i < nb; i++) {
@@ -71,8 +87,12 @@ var buildMenu = function() {
       menu:  new jetpack.Menu(subMenu),
     };
   };
-  menu[i++] = { type: 'separator' };
-  menu[i++] = { label: "Configure", data: 'configure' }
+  if (true != all) {
+    menu[i++] = { type: 'separator' };
+    menu[i++] = { label: "Other currencies...", menu: new jetpack.Menu(buildMenuConfiguration(true)) }
+    menu[i++] = { type: 'separator' };
+    menu[i++] = { label: "Configure", data: 'configure' }
+  }
   return menu;
 }
 
@@ -142,4 +162,19 @@ var currencyCodes = {
   "USD": "United States Dollar",
   "VEB": "Venezuelan Bolívar",
   "ZAR": "South African Rand",
+};
+
+// TODO: parse selected text to find a currency sign and propose preselected matching currencies
+var symbols = {
+  '$'  : ['ARS', 'AUD', 'BND', 'CAD', 'CLP', 'COP', 'FJD', 'HKD', 'MXN', 'NZD', 'SGD', 'TTD', 'TWD', 'USD', 'XCD'],
+  'R$' : ['BRL'],
+  '£'  : ['GBP', 'EGP'],
+  'лв' : ['BGN'],
+  '¥'  : ['JPY'],
+  'Kč' : ['CZK'],
+  '₪'  : ['ILS'],
+  '₩'  : ['KRW'],
+  'Lt' : ['LTL'],
+  '₨'  : ['NPR'],
+  'ƒ'  : ['ANG'],
 };
